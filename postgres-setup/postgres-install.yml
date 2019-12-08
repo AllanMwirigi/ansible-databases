@@ -1,0 +1,94 @@
+---
+- name: Postgres Installation
+  hosts: dbservers #there is a hosts file in this folder
+  become: yes
+  become_user: root
+  become_method: sudo
+
+  vars:
+    #change these paths as required
+    parent_data_directory: '/data/pgdata'
+    data_directory: '/data/pgdata/data'
+    logs_directory: '/data/logs/pg_log'
+
+  tasks:
+    - name: Copy repo
+      copy:
+        src: pgdg-redhat-all.repo
+        dest: /etc/yum.repos.d
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: YUM install
+      yum: 
+        state: present
+        name:
+          - postgresql11
+          - postgresql11-server
+
+    - name: Create postgres directory
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      with_items:
+          - "{{ parent_data_directory }}"
+          - /etc/systemd/system/postgresql-11.service.d
+
+    - name: Create data and log directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: 0700
+      with_items:
+        - "{{ data_directory }}"
+        - "{{ logs_directory }}"
+
+    - name: Template for postgres service conf
+      # this step is a substitute for this command -  $systemctl edit postgresql-11.service 
+      # because cannot edit files, e.g with Vim, at runtime in Ansible which is what systemctl edit does
+      template:
+        src: postgres-service.conf.j2
+        dest: /etc/systemd/system/postgresql-11.service.d/override.conf
+        force: true
+        owner: root
+        group: root
+        mode: 0644
+
+    ##################################### TODO #############################################
+    # Automate additional required steps
+    # postgresql.conf - specify listen_address, port, archive_mode, archive_command
+    # pg_hba.conf - change from peer to trust, or otherwise needed
+    #########################################################################################
+
+    - name: Initialize database
+      shell: sudo /usr/pgsql-11/bin/postgresql-11-setup initdb
+       # become: yes
+       # become_user: root
+       # become_method: sudo
+
+    - name: Template for postgresql.conf
+      template:
+        src: postgresql.conf.j2
+        dest: "{{ data_directory }}/postgresql.conf"
+        force: true
+        owner: postgres
+        group: postgres
+
+    - name: Start and enable service
+      systemd:
+        name: postgresql-11
+        daemon_reload: yes
+        state: restarted
+        enabled: yes
+
+
+  
+
+
+

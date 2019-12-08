@@ -1,0 +1,70 @@
+---
+- name: Cassandra Installation
+  hosts: dbservers
+  become: yes
+  become_user: root
+  become_method: sudo
+  vars:
+    # these are variables used in various files in this folder
+    cluster_name: 'TestCluster'
+    datacentre_name: 'DC1'
+    rack_name: 'rack1'
+    # change these paths as required
+    cassandra_directory: '/opt/cassandra'
+    hints_directory: '/opt/cassandra/hints'
+    data_directory: '/opt/cassandra/data'
+    commitlog_directory: '/opt/cassandra/commitlog'
+    saved_caches_directory: '/opt/cassandra/savedcaches'
+
+  tasks:
+    # - debug: var=hostvars
+    # - debug: var=ansible_default_ipv4.address 
+
+    - name: Copy cassandra.repo
+      copy:
+        src: cassandra.repo
+        dest: /etc/yum.repos.d
+        owner: root
+        group: root
+        mode: 0644      #"u=rw,g=r,o=r" # '644'
+
+    - name: YUM Install cassandra
+      yum:
+        #disablerepo: "mariadb.repo"
+        #enablerepo: "cassandra.repo"
+        name: cassandra
+        state: present
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: cassandra
+        group: cassandra
+        mode: 0755
+      with_items:
+        - "{{ cassandra_directory }}"
+        - "{{ hints_directory }}"
+        - "{{ data_directory }}"
+        - "{{ commitlog_directory }}"
+        - "{{ saved_caches_directory }}"
+
+    - name: Template for cassandra.yaml
+      template:
+        src: cassandra.yaml.j2
+        dest: /etc/cassandra/conf/cassandra.yaml
+        force: true
+        mode: "u=rw,g=r,o=r"
+
+    - name: Template for cassandra-rackdc.properties
+      template:
+        src: cassandra-rackdc.properties.j2
+        dest: /etc/cassandra/conf/cassandra-rackdc.properties
+        force: true
+        mode: "u=rw,g=r,o=r"
+
+    - name: Start Cassandra service
+      systemd:
+        name: cassandra
+        enabled: yes
+        state: started

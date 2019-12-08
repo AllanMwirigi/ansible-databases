@@ -1,0 +1,12 @@
+
+## copy over the contents of an existing /etc/cassandra/conf/cassandra-install.yaml to this file
+## edit these fields where they appear
+
+cluster_name: '{{ cluster_name }}'
+seeds: "{{ hostvars.values()|map(attribute='ansible_default_ipv4.address')|join(',') }}"
+listen_address: {{ ansible_default_ipv4.address }}
+rpc_address: {{ ansible_default_ipv4.address }}
+
+data_file_directories:
+    - {{ data_directory }}
+commitlog_directory: {{ commitlog_directory }}

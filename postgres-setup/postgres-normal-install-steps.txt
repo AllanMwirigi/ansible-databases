@@ -1,0 +1,27 @@
+#Set up the repo
+rpm -Uvh https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+################ fix #####################################
+#in case of certificate errors
+wget --no-check-certificate https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm  #download the package first
+rpm -Uvh pgdg-redhat-repo-latest.noarch.rpm   #rpm uses the downloaded package to set up the repo at /etc/yum.repos.d/
+##########################################################
+
+#install
+ yum install postgresql11
+ #Optionally install the server packages:
+  yum install postgresql11-server
+
+#Edit the service to save data in custom location
+systemctl edit postgresql-11.service
+#insert this
+[Service]
+Environment=PGDATA=/opt/postgres/data
+
+#Optionally initialize the database and enable automatic start:
+/usr/pgsql-11/bin/postgresql-11-setup initdb
+systemctl enable postgresql-11
+systemctl start postgresql-11
+
+#enter shell
+sudo -u postgres -i  or create role
